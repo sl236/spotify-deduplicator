@@ -15,6 +15,9 @@ def load_config():
         'auth_cache_path': os.path.join( CONFIG_DIR, 'auth' ),
         'db_path': os.path.join( CONFIG_DIR, 'db' ),
         'redirect_uri': 'spotify-deduplicator://auth/',
+        'max_seconds_between_polls_while_playing': 10,
+        'seconds_delay_when_skipping': 0.3, # note spotify has rate limit, not precisely documented but somewhere around 10-20Hz
+        'seconds_between_polls_when_not_playing': 30,
     }
 
     if not os.path.isdir( CONFIG_DIR ):
@@ -88,6 +91,10 @@ def check_playback( sp, db, config ):
 
                 curr_time = time.time()
                 last_time = db.get( item['id'], 0 )
+                times_played = 2 if last_time else 1
+                if isinstance( last_time, dict ):
+                    times_played = last_time.get('total_times_played', times_played)
+                    last_time = last_time.get('last_played_time', 0)
                 db['last'] = item['id']
 
                 if curr_time - last_time < config['min_seconds_before_repeat']:
@@ -97,17 +104,17 @@ def check_playback( sp, db, config ):
                     else:
                         print 'Track was last played %d seconds ago; skipping' % (curr_time - last_time)
                         sp.next_track( device_id = currently_playing['device']['id'] )
-                        return 1
+                        return config['seconds_delay_when_skipping']
 
-                db[item['id']] = curr_time
+                db[item['id']] = { 'last_played_time': curr_time, 'total_times_played': times_played }
                 store_db( db, config )
 
-            return min( int(left/1000)+1, 30 )
+            return min( int(left/1000)+1, config['max_seconds_between_polls_while_playing'] )
 
     except Exception as e:
         print e
 
-    return 30
+    return config['seconds_between_polls_when_not_playing']
 
 def main():
     config = load_config()
