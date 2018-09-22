@@ -51,8 +51,8 @@ def load_db(config):
 
 def store_db(db, config):
     try:
-        with open( config['db_path'], 'rb' ) as f:
-            pickle.dump( db, f, "wb" )
+        with open( config['db_path'], 'wb' ) as f:
+            pickle.dump( db, f )
     except Exception as e:
         print e
 
@@ -91,9 +91,13 @@ def check_playback( sp, db, config ):
                 db['last'] = item['id']
 
                 if curr_time - last_time < config['min_seconds_before_repeat']:
-                    print 'Track was last played %d seconds ago; skipping' % (curr_time - last_time)
-                    sp.next_track( device_id = currently_playing['device']['id'] )
-                    return 1
+                    context = currently_playing.get('context', None)
+                    if context:
+                        print 'Track was last played %d seconds ago, but not skipping because context is populated -> not playing radio'
+                    else:
+                        print 'Track was last played %d seconds ago; skipping' % (curr_time - last_time)
+                        sp.next_track( device_id = currently_playing['device']['id'] )
+                        return 1
 
                 db[item['id']] = curr_time
                 store_db( db, config )
