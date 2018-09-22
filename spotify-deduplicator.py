@@ -119,7 +119,7 @@ def main():
         try:
             wait_time = check_playback( sp, db, config )
         except spotipy.client.SpotifyException:
-            token = authenticate()
+            token = authenticate( config )
             sp = spotipy.Spotify( auth=token )
             wait_time = check_playback( sp, db, config ) # so we die if we fail here immediately after authenticate()
 
